@@ -1,85 +1,60 @@
 # USAGE
 # python real_time_object_detection.py
 
-# import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
 import numpy as np
-import argparse
 import imutils
 import time
 import cv2
 
-# construct the argument parse and parse the arguments
-'''ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--prototxt", required=True,
-	help="path to Caffe 'deploy' prototxt file")
-ap.add_argument("-m", "--model", required=True,
-	help="path to Caffe pre-trained model")
-ap.add_argument("-c", "--confidence", type=float, default=0.2,
-	help="minimum probability to filter weak detections")
-args = vars(ap.parse_args())'''
-
-# initialize the list of class labels MobileNet SSD was trained to
-# detect, then generate a set of bounding box colors for each class
 CLASSES = ["background", "aeroplane", "bicycle", "bird", "boat",
 	"bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
 	"dog", "horse", "motorbike", "person", "pottedplant", "sheep",
 	"sofa", "train", "tvmonitor", "tie", "book"]
+
 COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
-# load our serialized model from disk
 print("[INFO] loading model...")
 net = cv2.dnn.readNetFromCaffe('MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
 
-# initialize the video stream, allow the cammera sensor to warmup,
-# and initialize the FPS counter
 print("[INFO] starting video stream...")
-vs = VideoStream(src=2).start()
+vs = VideoStream(src=2).start()  # ganti ke 0 jika pakai webcam biasa
 time.sleep(2.0)
 fps = FPS().start()
 
-# loop over the frames from the video stream
+last_command_time = 0
+command_interval = 0.5
 
 while True:
-	# grab the frame from the threaded video stream and resize it
-	# to have a maximum width of 400 pixels
 	frame = vs.read()
 	frame = imutils.resize(frame, width=400)
-
-	# grab the frame dimensions and convert it to a blob
 	(h, w) = frame.shape[:2]
+	frame_center = w // 2
+
 	blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)),
 		0.007843, (300, 300), 127.5)
-
-	# pass the blob through the network and obtain the detections and
-	# predictions
 	net.setInput(blob)
 	detections = net.forward()
 
-	# loop over the detections
+	person_detected = False
+	current_time = time.time()
+
 	for i in np.arange(0, detections.shape[2]):
-		# extract the confidence (i.e., probability) associated with
-		# the prediction
 		confidence = detections[0, 0, i, 2]
-
-		# filter out weak detections by ensuring the `confidence` is
-		# greater than the minimum confidence
 		if confidence > 0.2:
-			# extract the index of the class label from the
-			# `detections`, then compute the (x, y)-coordinates of
-			# the bounding box for the object
 			idx = int(detections[0, 0, i, 1])
-
-			# Hanya memproses deteksi class "Person" atau orang
 			label_name = CLASSES[idx]
-			if label_name not in ["person"]:
+			if label_name not in ["person", "cat"]:
 				continue
-	
+
+			person_detected = True
 			box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
 			(startX, startY, endX, endY) = box.astype("int")
 
-			# draw the prediction on the frame
+			center_x = (startX + endX) // 2
+
+            # draw the prediction on the frame
 			label = "{}: {:.2f}%".format(CLASSES[idx],
 				confidence * 100)
 			cv2.rectangle(frame, (startX, startY), (endX, endY),
@@ -88,22 +63,29 @@ while True:
 			cv2.putText(frame, label, (startX, y),
 				cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[idx], 2)
 
-	# show the output frame
+			if current_time - last_command_time >= command_interval:
+				if abs(center_x - frame_center) < 40:
+					print("🟢 Perintah: MAJU")
+				elif center_x < frame_center:
+					print("🟡 Perintah: BEL0K KIRI")
+				else:
+					print("🟡 Perintah: BELOK KANAN")
+				last_command_time = current_time
+
+	if not person_detected and current_time - last_command_time >= command_interval:
+		print("🔴 Perintah: BERHENTI (tidak ada objek)")
+		last_command_time = current_time
+
+	# tampilkan hasil kamera tanpa delay
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
-
-	# if the `q` key was pressed, break from the loop
 	if key == ord("q"):
 		break
 
-	# update the FPS counter
 	fps.update()
 
-# stop the timer and display FPS information
 fps.stop()
 print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
 print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
-
-# do a bit of cleanup
 cv2.destroyAllWindows()
 vs.stop()
