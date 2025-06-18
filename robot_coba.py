@@ -19,7 +19,7 @@ print("[INFO] loading model...")
 net = cv2.dnn.readNetFromCaffe('MobileNetSSD_deploy.prototxt.txt', 'MobileNetSSD_deploy.caffemodel')
 
 print("[INFO] starting video stream...")
-vs = VideoStream(src=2).start()  # ganti ke 0 jika pakai webcam biasa
+vs = VideoStream(src=2).start()  # ada 0, 1, 2, 3, dst.... kamera
 time.sleep(2.0)
 fps = FPS().start()
 
@@ -45,7 +45,7 @@ while True:
 		if confidence > 0.2:
 			idx = int(detections[0, 0, i, 1])
 			label_name = CLASSES[idx]
-			if label_name not in ["person", "cat"]:
+			if label_name not in ["person"]:
 				continue
 
 			person_detected = True

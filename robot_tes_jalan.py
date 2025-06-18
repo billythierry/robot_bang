@@ -6,7 +6,7 @@ import imutils
 from imutils.video import VideoStream, FPS
 
 # --- Konfigurasi Serial ke ESP32 ---
-esp = serial.Serial('COM5', 115200, timeout=1)  # Ganti COM5 ke port ESP32 kamu
+esp = serial.Serial('COM3', 115200, timeout=1)  # Ganti COM4 ke port ESP32 kamu
 time.sleep(2)  # Tunggu koneksi serial stabil
 
 # --- Model Deteksi Objek ---
